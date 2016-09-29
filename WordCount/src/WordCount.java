@@ -21,14 +21,46 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 public class WordCount {
+	/*
+	 * Class that extends the Mapper Class. The methods of Map class take as the
+	 * input and produce the intermediate key value pairs. The Generics of the
+	 * Mapper class to specify what kind of input and output should be expected.
+	 * In this class The first 2 arguments(LongWritable and Text(First pair)
+	 * represent Input format and Text and InWritable(Second Pair) represents
+	 * the output format.
+	 */
+	/*
+	 * The Mapper for the word count gives the intermediate key value pairs of
+	 * words. The mapper fpr every word in the input file makes a key value pair
+	 * (word,1) That is The word acts and a key and its count is one.
+	 */
 	public static class Map extends
 			Mapper<LongWritable, Text, Text, IntWritable> {
-		private final static IntWritable one = new IntWritable(1);
+		private final static IntWritable one = new IntWritable(1);//Initialising final static variable
 		private Text word = new Text(); // type of output key
-
+		
+				
+		/**
+		 * The input file is first split into input split equal to the size of
+		 * one block of HDFS. For each input split a mapper/Reducer is assigned.
+		 * For Every Input Split there is an Record reader. The record Reader
+		 * fetches one record at a time( one line) from the input split and
+		 * gives to the map function.
+		 * 
+		 * LongWritable key- has the offset location of the record in the input
+		 * split. Text value- has the record data.
+		 * 
+		 * @throws InterruptedException
+		 * @throws IOException
+		 */
 		public void map(LongWritable key, Text value, Context context)
 				throws IOException, InterruptedException {
-			String[] mydata = value.toString().split(" ");
+			String[] mydata = value.toString().split(" ");// The line of text is
+								     // split by spaces.
+			/*
+			 * for every word in the record. a Key value pair of ( word, 1) is
+			 * written to context.
+			 */
 			for (String data : mydata) {
 				word.set(data); // set word as each input keyword
 				context.write(word, one); // create a pair <keyword, 1>
@@ -36,6 +68,18 @@ public class WordCount {
 		}
 	}
 
+	/**
+	 * The Reducer combines all the intermediate key value pairs into one. 
+	 * Class that extends Reducer. The generics of the Reducer are also similar
+	 * to mapper. Here The first pair represents the input that is the output of
+	 * the mapper( Text(word), IntWritable(value(1)) and the second represents the output.
+	 * (word,total occurrences in the input file.
+	 * 
+	 * The Reduce method gets all the values for a particular key. We compute the sum of all individual keys to form the total.
+	 * @throws InterruptedException
+	 * @throws IOException
+	 * 
+	 */
 	public static class Reduce extends
 			Reducer<Text, IntWritable, Text, IntWritable> {
 		private IntWritable result = new IntWritable();
