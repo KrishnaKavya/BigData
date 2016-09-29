@@ -1,12 +1,5 @@
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.*;
@@ -20,7 +13,13 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
-public class WordCount {
+/**
+ * 
+ * @author M Krishna Kavya
+ * 
+ */
+public class MyWordCount {
+
 	/*
 	 * Class that extends the Mapper Class. The methods of Map class take as the
 	 * input and produce the intermediate key value pairs. The Generics of the
@@ -36,10 +35,14 @@ public class WordCount {
 	 */
 	public static class Map extends
 			Mapper<LongWritable, Text, Text, IntWritable> {
-		private final static IntWritable one = new IntWritable(1);//Initialising final static variable
-		private Text word = new Text(); // type of output key
-		
-				
+		private final static IntWritable one = new IntWritable(1); // Initialising
+																	// final
+																	// static
+																	// variable
+																	// with
+																	// value 1
+		private Text word = new Text();// word. output key
+
 		/**
 		 * The input file is first split into input split equal to the size of
 		 * one block of HDFS. For each input split a mapper/Reducer is assigned.
@@ -55,17 +58,19 @@ public class WordCount {
 		 */
 		public void map(LongWritable key, Text value, Context context)
 				throws IOException, InterruptedException {
-			String[] mydata = value.toString().split(" ");// The line of text is
-								     // split by spaces.
+
+			String[] record = value.toString().split(" ");// The line of text is
+															// split by spaces.
 			/*
 			 * for every word in the record. a Key value pair of ( word, 1) is
 			 * written to context.
 			 */
-			for (String data : mydata) {
-				word.set(data); // set word as each input keyword
-				context.write(word, one); // create a pair <keyword, 1>
+			for (String data : record) {
+				word.set(data);
+				context.write(word, one); // creates key value pairs.
 			}
 		}
+
 	}
 
 	/**
@@ -82,46 +87,77 @@ public class WordCount {
 	 */
 	public static class Reduce extends
 			Reducer<Text, IntWritable, Text, IntWritable> {
-		private IntWritable result = new IntWritable();
 
-		public void reduce(Text key, Iterable<IntWritable> values,
-				Context context) throws IOException, InterruptedException {
-			int sum = 0; // initialize the sum for each keyword
-			for (IntWritable val : values) {
-				sum += val.get();
+		private IntWritable result=new IntWritable();
+		public void reduce(Text Key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException{
+			int sum=0;// initialize the sum for each keyword
+			for(IntWritable value:values){
+				sum+=value.get();
 			}
 			result.set(sum);
-			context.write(key, result); // create a pair <keyword, number of
-										// occurences>
+			context.write(Key, result);
 		}
 	}
 
-	// Driver program
-	public static void main(String[] args) throws Exception {
+	public static void main(String args[]) throws IOException,
+			ClassNotFoundException, InterruptedException {
 		Configuration conf = new Configuration();
-		String[] otherArgs = new GenericOptionsParser(conf, args)
+		/*
+		 * The Generic options parser is a utility to parse the command line
+		 * arguments generic to the frame work. During the execution using
+		 * Hadoop jar command. The input and output arguments are taken in the
+		 * string array arguments.
+		 */
+		String[] arguments = new GenericOptionsParser(conf, args)
 				.getRemainingArgs();
-		// get all args
-		if (otherArgs.length != 2) {
-			System.err.println("Usage: WordCount <in> <out>");
+		/*
+		 * The program is terminated if all the arguments are not received.
+		 */
+		if (arguments.length != 2) {
+			System.err
+					.println("Command to execute: hadoop jar <Addressofjar> <ClassName> <location of input> <location of output>");
 			System.exit(2);
 		}
-		// create a job with name "wordcount"
-		Job job = new Job(conf, "wordcount");
-		job.setJarByClass(WordCount.class);
+		/*
+		 * Job is a submitter's view of a job. It allows the user to configure
+		 * the job, submit, control its execution and query its state. The set
+		 * methods work only till the job is submitted. They throw an illegal
+		 * argument exception.
+		 */
+		Job job = new Job(conf, "MyWordCount");
+
+		// Adding class jar.
+		job.setJarByClass(MyWordCount.class);
+
+		// Adding Mapper and reducer classes
 		job.setMapperClass(Map.class);
 		job.setReducerClass(Reduce.class);
-		// uncomment the following line to add the Combiner
-		// job.setCombinerClass(Reduce.class);
-		// set output key type
+
+		/*
+		 * The expected output of the word count program is to get the key value
+		 * pairs of words and its respective count in the input file. Hence, we
+		 * set the outputKey class as Text and output value class as
+		 * IntWritable(Integer).
+		 */
 		job.setOutputKeyClass(Text.class);
-		// set output value type
 		job.setOutputValueClass(IntWritable.class);
-		// set the HDFS path of the input data
-		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
-		// set the HDFS path for the output
-		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
-		// Wait till job completion
+
+		/*
+		 * The input and output files are present in HDFS. The arguments of
+		 * execution gives the input/ output names. We set the input and output.
+		 * The Map-Reduce framework relies on the InputFormat of the job to:
+		 * 
+		 * Validate the input-specification of the job. Split-up the input
+		 * file(s) into logical InputSplits, each of which is then assigned to
+		 * an individual Mapper. Provide the RecordReader implementation to be
+		 * used to glean input records from the logical InputSplit for
+		 * processing by the Mapper.
+		 */
+		FileInputFormat.addInputPath(job, new Path(arguments[0])); // input file
+		FileOutputFormat.setOutputPath(job, new Path(arguments[1]));
+
 		System.exit(job.waitForCompletion(true) ? 0 : 1);
+
 	}
+
 }
