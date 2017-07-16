@@ -9,7 +9,7 @@ object mutualFriendsList {
     
      // Setting the configuration variable.
     val conf = new SparkConf()
-      .setAppName("Word Count")
+      .setAppName("Mutual Friends List")
       .setMaster("local")
       
     val sc = new SparkContext(conf)
